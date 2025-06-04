@@ -1,0 +1,248 @@
+以下是一个完整的HTML+JS实现，包含数据加密存储、定期失效功能（一周后自动失效），以及搜索解密展示功能：
+
+```html
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>加密数据查询系统</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        .container {
+            background-color: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .search-box {
+            display: flex;
+            margin-bottom: 20px;
+            gap: 10px;
+        }
+        #search-input {
+            flex: 1;
+            padding: 12px;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            transition: border 0.3s;
+        }
+        #search-input:focus {
+            border-color: #3498db;
+            outline: none;
+        }
+        #search-btn {
+            padding: 12px 25px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        #search-btn:hover {
+            background-color: #2980b9;
+        }
+        .result {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 25px;
+            border-left: 5px solid #3498db;
+            display: none;
+        }
+        .result h3 {
+            margin-top: 0;
+            color: #2c3e50;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .result-item {
+            margin-bottom: 12px;
+            display: flex;
+        }
+        .label {
+            font-weight: bold;
+            width: 100px;
+            color: #7f8c8d;
+        }
+        .value {
+            flex: 1;
+            word-break: break-all;
+        }
+        .error {
+            color: #e74c3c;
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #fdecea;
+            border-radius: 5px;
+            display: none;
+        }
+        .expired {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>加密数据查询系统</h1>
+        <div class="search-box">
+            <input type="text" id="search-input" placeholder="请输入ID进行查询...">
+            <button id="search-btn">查询</button>
+        </div>
+        <div id="error-message" class="error"></div>
+        <div id="result" class="result">
+            <h3>查询结果</h3>
+            <div class="result-item">
+                <span class="label">原始ID:</span>
+                <span id="original-id" class="value"></span>
+            </div>
+            <div class="result-item">
+                <span class="label">加密ID:</span>
+                <span id="encrypted-id" class="value"></span>
+            </div>
+            <div class="result-item">
+                <span class="label">名称:</span>
+                <span id="name" class="value"></span>
+            </div>
+            <div class="result-item">
+                <span class="label">数值:</span>
+                <span id="value" class="value"></span>
+            </div>
+            <div class="result-item">
+                <span class="label">有效期至:</span>
+                <span id="expiry-date" class="value"></span>
+            </div>
+        </div>
+        <div class="footer">
+            数据将在创建一周后自动失效
+        </div>
+    </div>
+
+    <script>
+        // 加密数据存储（使用AES加密算法模拟）
+        // 实际数据已加密，包含创建时间戳
+        const encryptedDatabase = {
+            // 数据格式: [加密的名称, 加密的数值, 创建时间戳]
+            "MTgwMzg5ODQ1Ng==": ["U2FsdGVkX18vj5X7WkQ6Jz3p1o2wYH9lLmNvbS8=", "U2FsdGVkX19Jk4s7T2qXvGt8w3eDcFbA==", 1625097600000],
+            "ODcxMzA5NjA=": ["U2FsdGVkX1+9m7cKp3qRvNl2wYsT5fHjDdE=", "U2FsdGVkX19/8k7sLmQ2vNt1wYoT5fHj", 1625097600000],
+            "NDk5NzY3MjE=": ["U2FsdGVkX19Kl2s7T2qXvGt8w3eDcFbA==", "U2FsdGVkX19/4k7sLmQ2vNt1wYoT5Q==", 1625097600000],
+            "MTU0MzI3NA==": ["U2FsdGVkX18vj5X7WkQ6Jz3p1o2wYH8=", "U2FsdGVkX19Jk4s7T2qXvGt8w3eDcA==", 1625097600000],
+            "MTc4MjU3Mjc0Mw==": ["U2FsdGVkX1+9m7cKp3qRvNl2wYsT5Q==", "U2FsdGVkX19/8k7sLmQ2vNt1wYoT5Q==", 1625097600000]
+            // 可以添加更多加密数据...
+        };
+
+        // 模拟AES解密函数（实际应用中应使用真正的加密库）
+        function simulatedDecrypt(encryptedText, timestamp) {
+            // 检查是否过期（一周=604800000毫秒）
+            const now = new Date().getTime();
+            if (now - timestamp > 604800000) {
+                return "数据已过期，无法解密";
+            }
+            
+            // 模拟解密过程 - 实际应用中应使用真正的解密算法
+            try {
+                // 这里只是一个模拟，实际应该使用CryptoJS等库
+                return atob(encryptedText).replace("Salted__", "").substring(0, 10) + "...";
+            } catch (e) {
+                return "解密失败";
+            }
+        }
+
+        // 加密ID函数（Base64）
+        function encryptId(id) {
+            return btoa(encodeURIComponent(id).replace(/%([0-9A-F]{2})/g, 
+                function(match, p1) {
+                    return String.fromCharCode('0x' + p1);
+                }));
+        }
+
+        // 格式化日期
+        function formatDate(timestamp) {
+            const date = new Date(timestamp + 604800000); // 加一周
+            return date.toLocaleString() + (new Date().getTime() > timestamp + 604800000 ? 
+                   ' <span class="expired">(已过期)</span>' : ' (有效期内)');
+        }
+
+        // 搜索函数
+        function searchData() {
+            const input = document.getElementById('search-input').value.trim();
+            const errorElement = document.getElementById('error-message');
+            const resultElement = document.getElementById('result');
+            
+            // 清空之前的结果和错误
+            errorElement.textContent = '';
+            errorElement.style.display = 'none';
+            resultElement.style.display = 'none';
+            
+            if (!input) {
+                showError('请输入要查询的ID');
+                return;
+            }
+            
+            // 加密输入的ID
+            const encryptedId = encryptId(input);
+            
+            // 在数据库中查找
+            if (encryptedDatabase.hasOwnProperty(encryptedId)) {
+                const [encryptedName, encryptedValue, timestamp] = encryptedDatabase[encryptedId];
+                
+                // 解密数据
+                const name = simulatedDecrypt(encryptedName, timestamp);
+                const value = simulatedDecrypt(encryptedValue, timestamp);
+                
+                // 显示结果
+                document.getElementById('original-id').innerHTML = input;
+                document.getElementById('encrypted-id').innerHTML = encryptedId;
+                document.getElementById('name').innerHTML = name;
+                document.getElementById('value').innerHTML = value;
+                document.getElementById('expiry-date').innerHTML = formatDate(timestamp);
+                
+                resultElement.style.display = 'block';
+            } else {
+                showError('未找到匹配的记录');
+            }
+        }
+
+        // 显示错误
+        function showError(message) {
+            const errorElement = document.getElementById('error-message');
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+        }
+
+        // 绑定事件
+        document.getElementById('search-btn').addEventListener('click', searchData);
+        document.getElementById('search-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchData();
+            }
+        });
+
+        // 初始化时显示一些信息
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log("系统已初始化，数据将在创建一周后自动失效");
+        });
+    </script>
+</body>
+</html>
